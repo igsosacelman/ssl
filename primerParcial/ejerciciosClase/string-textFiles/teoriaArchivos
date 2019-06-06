@@ -1,0 +1,17 @@
+Archivos en C 
+
+File* f;
+
+Archivo de texto -> ascii
+Archivo binario -> tal cual estan los datos en memoria
+
+Abrir archivo:
+
+fopen("filename","modo")
+
+modos: 
+Texto -> r, w, a
+Binatio -> rb, wb, ab
+
+w  es para escribir. Crea un archivo si no existe. Si existe sobreescribe completamente.
+a  es de append. Sirve para modificar un archivo, agregar datos al final.
