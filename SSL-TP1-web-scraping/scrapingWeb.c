@@ -7,12 +7,15 @@ int pclose(FILE *);
 void saveScrappedWebInFile(FILE*,FILE*,char*);
 typedef enum { false, true } bool;
 typedef enum { initTag, lookingForTag, lookingForProperty, saveInformation, finish } tagCase;
+typedef enum { initTr, initTd, saveCell, closeTd, closeTag } tableCases;
 
-void filterFileByTagWithProperty(char* fileNameToRead,char* fileNameToWrite,char* tag, char* property, char* propertyName);
-void filterFileByTag(char* fileNameToRead,char* fileNameToWrite,char* tag);
+void filterFileByTagWithProperty(char*, char*,char*, char*, char*);
+void filterFileByTag(char*, char*, char*);
+void filterTable(char*, char*);
 
 void formatScrappedWebFile(char*,char*);
 void formatFilterFile(char*,char*);
+//void formatTable(char*,char*);
 
 void runMenu(void);
 void imprimirEspecies(void);
@@ -37,16 +40,18 @@ int main(void){
         printf("Error al intentar abrir el archivo.\n");
         return 1;
     }
+
     saveScrappedWebInFile(cmd,pFileScrappedWebWrite,result);
     fclose(pFileScrappedWebWrite);
     pclose(cmd);
 
     formatScrappedWebFile(scrappedFileName,auxFileName);
 
-    filterFileByTagWithProperty(auxFileName,filteredFileName,"table","id","tbAcciones");
-    filterFileByTag(filteredFileName,auxFileName,"tbody");
-    formatFilterFile(auxFileName,filteredFileName);
-
+    filterFileByTagWithProperty(auxFileName,filteredFileName,"table","id","tbAcciones"); // Me quedo con table id="tbAcciones"
+    filterFileByTag(filteredFileName,auxFileName,"tbody"); // Me quedo con el tbody de la tabla
+    formatFilterFile(auxFileName,filteredFileName); // Formateo para que sea mas facil sacar la informacion
+    filterTable(filteredFileName,auxFileName);// Me guarda la info de la tabla
+    //formatTable(auxFileName,filteredFileName);// formateo la info para limpiar el dato de la variacion
     //runMenu();
 
     return 0;
@@ -85,15 +90,31 @@ void formatFilterFile(char* fileNameToRead,char* fileNameToWrite){
         return;
     }
     while(EOF != fscanf(pFileToRead,"%c",currentWord)){
-        fputs(currentWord,pFileToWrite);
         if(strcmp(currentWord,"<") == 0){
-            fputs(" ",pFileToWrite);
+            fputs(" <",pFileToWrite);
+        }else{
+            fputs(currentWord,pFileToWrite);
         }
     }
     fclose(pFileToWrite);
     fclose(pFileToRead);
 }
+/*
+void formatTable(char* fileNameToRead,char* fileNameToWrite){
+    char currentWord[20];
+    FILE* pFileToRead = fopen(fileNameToRead,"r");
+    FILE* pFileToWrite = fopen(fileNameToWrite,"w");
+    if(pFileToRead == NULL || pFileToWrite == NULL){
+        printf("Error al intentar abrir el archivo.\n");
+        return;
+    } 
 
+    IMPLEMENTAR
+
+
+    fclose(pFileToWrite);
+    fclose(pFileToRead);
+}*/
 
 void filterFileByTagWithProperty(char* fileNameToRead,char* fileNameToWrite,char* tag, char* property, char* propertyName){
 
@@ -181,7 +202,8 @@ void filterFileByTag(char* fileNameToRead,char* fileNameToWrite,char* tag){
         switch(state){
             case lookingForTag: 
                 if(strcmp(currentWord,comparadorDeInicio) == 0){
-                state = saveInformation;
+                    fputs(" ",fileToWrite);
+                    state = saveInformation;
                 }else{
                     state = lookingForTag;
                 }
@@ -189,7 +211,7 @@ void filterFileByTag(char* fileNameToRead,char* fileNameToWrite,char* tag){
             case saveInformation: 
                 if(strcmp(currentWord,comparadorDeFin)!=0){
                     fputs(currentWord,fileToWrite);
-                    //fputs("\n",fileToWrite);
+                    fputs(" ",fileToWrite);
                 }
                 else{// Caso positivo: encontro el tag de cierre
                     state = finish;
@@ -203,6 +225,90 @@ void filterFileByTag(char* fileNameToRead,char* fileNameToWrite,char* tag){
                 printf("Algo salio mal");
                 state = lookingForTag;
                 runEnable = false;
+                break;
+        }
+    }
+    fclose(fileToRead);
+    fclose(fileToWrite);
+
+}
+
+void filterTable(char* fileNameToRead,char* fileNameToWrite){
+
+    FILE* fileToRead = fopen(fileNameToRead,"r");
+    FILE* fileToWrite = fopen(fileNameToWrite,"w");
+
+    if(fileToRead == NULL || fileToWrite == NULL ) {
+        printf("Error al intentar abrir el archivo.\n");
+        return;
+    }
+
+    tableCases state = initTr;
+    char currentWord[1048576] = {'\0'};
+    char trTagOpen[10] = {'\0'}; char trTagClose[10] = {'\0'}; 
+    char tdTagOpen[10] = {'\0'}; char tdTagClose[10] = {'\0'};
+    char aTagOpen[10] = {'\0'}; char aTagClose[10] = {'\0'};
+    char imgTagOpen[10] = {'\0'};
+    char* tagInit = "<"; 
+    char* tagFinOpen = "</"; char* tagFinClose = ">";
+    char* trTag = "tr"; char* tdTag = "td"; char* aTag = "a"; char* imgTag = "img";
+    char* format = "%s";
+    int currentWordLen;
+    strcat(strcat(trTagOpen,tagInit),trTag);
+    strcat(strcat(strcat(trTagClose,tagFinOpen),trTag),tagFinClose);
+    strcat(strcat(tdTagOpen,tagInit),tdTag);
+    strcat(strcat(strcat(tdTagClose,tagFinOpen),tdTag),tagFinClose);
+    strcat(strcat(aTagOpen,tagInit),aTag);
+    strcat(strcat(strcat(aTagClose,tagFinOpen),aTag),tagFinClose);
+    strcat(strcat(imgTagOpen,tagInit),imgTag);
+    
+    while(EOF != fscanf(fileToRead,format, currentWord)){
+        switch(state){
+            case initTr: // Busco <tr
+                if(strcmp(currentWord,trTagOpen) == 0){
+                    state = initTd;
+                }else{
+                    state = initTr;
+                }
+                break;
+            case initTd: // Busco <td
+                if(strcmp(currentWord,tdTagOpen) == 0){
+                    state = closeTag;
+                }else{
+                    state = initTd;
+                }
+                break;
+            case closeTag: // Busco >
+                currentWordLen = strlen(currentWord);
+                if(strcmp(&currentWord[currentWordLen-1],tagFinClose) == 0){
+                    state = saveCell;
+                }else{
+                    state = closeTag;
+                }
+                break;
+            case saveCell: // Si es un <a o <img = voy a buscar '>' | si es un </a> no hago nada | si es un </td> me voy a fijar si después viene un <td o un </tr> | guardo la data leida
+                if(strcmp(currentWord,aTagOpen) == 0 || strcmp(currentWord,imgTagOpen) == 0){
+                    state = closeTag;
+                }else if(strcmp(currentWord,aTagClose) == 0){
+                    state = saveCell;
+                }else if(strcmp(currentWord,tdTagClose) == 0){
+                    fputs(" ",fileToWrite);
+                    state = closeTd;
+                }else{
+                    fputs(currentWord,fileToWrite);
+                }
+                break;
+            case closeTd: // Si es <td empiezo de nuevo | si es </tr> clavo \n y empiezo de 0
+                if(strcmp(currentWord,tdTagOpen) == 0){
+                    state = closeTag;
+                }else if(strcmp(currentWord,trTagClose) == 0){
+                    fputs("\n",fileToWrite);
+                    state = initTr;
+                }
+                break;
+            default: 
+                printf("Algo salio mal");
+                state = initTr;
                 break;
         }
     }
