@@ -15,7 +15,9 @@ void filterTable(char*, char*);
 
 void formatScrappedWebFile(char*,char*);
 void formatFilterFile(char*,char*);
-//void formatTable(char*,char*);
+void formatTable(char*,char*);
+
+int contains (char*, char);
 
 void runMenu(void);
 void imprimirEspecies(void);
@@ -51,7 +53,8 @@ int main(void){
     filterFileByTag(filteredFileName,auxFileName,"tbody"); // Me quedo con el tbody de la tabla
     formatFilterFile(auxFileName,filteredFileName); // Formateo para que sea mas facil sacar la informacion
     filterTable(filteredFileName,auxFileName);// Me guarda la info de la tabla
-    //formatTable(auxFileName,filteredFileName);// formateo la info para limpiar el dato de la variacion
+    formatTable(auxFileName,filteredFileName);// formateo la info para limpiar el dato de la variacion
+    
     //runMenu();
 
     return 0;
@@ -99,22 +102,47 @@ void formatFilterFile(char* fileNameToRead,char* fileNameToWrite){
     fclose(pFileToWrite);
     fclose(pFileToRead);
 }
-/*
+
+int contains (char *str, char caracter) {
+    int index;
+    int len = strlen(str);
+    for (index = 0 ; index < len ; index++){ 
+        if ( str[index] == caracter ) { 
+            return index; 
+        }  
+    }
+    return -1;
+}
+
 void formatTable(char* fileNameToRead,char* fileNameToWrite){
-    char currentWord[20];
-    FILE* pFileToRead = fopen(fileNameToRead,"r");
-    FILE* pFileToWrite = fopen(fileNameToWrite,"w");
-    if(pFileToRead == NULL || pFileToWrite == NULL){
+    char currentWord[20] = {'\0'};
+    char buffer[20] = {'\0'};
+    int strIndex = -1;
+    FILE* fileToRead = fopen(fileNameToRead,"r");
+    FILE* fileToWrite = fopen(fileNameToWrite,"w");
+
+    if(fileToRead == NULL || fileToWrite == NULL){
         printf("Error al intentar abrir el archivo.\n");
         return;
     } 
 
-    IMPLEMENTAR
+    while(EOF != fscanf(fileToRead, "%s", currentWord)){
+        strIndex = contains(currentWord,'&');
+        if(strIndex >= 0){
+            strncpy(buffer,currentWord,strIndex);
+            fputs(buffer,fileToWrite);
+        }else{
+            fputs(currentWord,fileToWrite);
+        }
+        fputs(" ",fileToWrite);
+        //Reseteo de condiciones iniciales:
+        strIndex = -1;
+        strcpy(buffer,"");
+    }
 
-
-    fclose(pFileToWrite);
-    fclose(pFileToRead);
-}*/
+    fclose(fileToWrite);
+    fclose(fileToRead);
+}
 
 void filterFileByTagWithProperty(char* fileNameToRead,char* fileNameToWrite,char* tag, char* property, char* propertyName){
 
